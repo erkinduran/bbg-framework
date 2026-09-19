@@ -2,8 +2,6 @@
     
     namespace App\Front;
     
-    use App\Bags\Calculate;
-    use App\Core\DB;
     use Exception;
 
     class Home
