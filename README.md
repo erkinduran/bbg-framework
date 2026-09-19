@@ -53,42 +53,35 @@ depending on `SSL_SECURE`.
 
 ## Running it
 
-Every request has to reach `index.php`; the framework has no front-controller
-rewrite rules of its own, so the web server needs to provide them.
+Every request has to reach `index.php`. The repo ships the front-controller
+config for both Apache and PHP's built-in server.
 
-**PHP built-in server (development).** Create `server.php` in the project root:
-
-```php
-<?php
-$path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-if ($path !== '/' && file_exists(__DIR__ . $path)) {
-    return false;          // let the built-in server serve real files
-}
-require __DIR__ . '/index.php';
-```
+**PHP built-in server (development).** `server.php` is a dev router: it serves
+real files off disk and hands everything else to the front controller.
 
 ```bash
 php -S 127.0.0.1:8000 server.php
 ```
 
 Pointing `php -S` straight at `index.php` also works for routes, but then
-requests for `public/css/app.css` and friends are swallowed by the router.
+requests for `public/css/app.css` and friends get swallowed by the router.
+`server.php` is for local development only.
 
-**Apache.** Drop an `.htaccess` in the project root:
+**Apache.** `.htaccess` in the project root does the rewrite, and — since the
+project root doubles as the document root — also denies access to `.env`,
+`composer.json`, `server.php` and the `config/`, `helpers/`, `src/`, `views/`
+and `vendor/` directories. It needs `mod_rewrite`, `mod_alias` and
+`AllowOverride All` on the directory.
 
-```apache
-RewriteEngine On
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^ index.php [L]
-```
-
-**nginx.**
+**nginx.** No config ships for nginx; the equivalent is:
 
 ```nginx
 location / {
     try_files $uri $uri/ /index.php;
 }
+
+location ~ ^/(config|helpers|src|views|vendor)/ { deny all; }
+location ~ ^/(\.env|composer\.(json|lock)|server\.php) { deny all; }
 ```
 
 ## Usage
@@ -195,8 +188,10 @@ Everything in `helpers/` is `require`d at boot, so these are globally available.
 ├── views/                 # plain-PHP templates
 │   └── welcome.php
 ├── .env.example
+├── .htaccess              # Apache rewrite + deny rules
 ├── composer.json
-└── index.php              # front controller / bootstrap
+├── index.php              # front controller / bootstrap
+└── server.php             # dev router for `php -S`
 ```
 
 ## Known limitations
@@ -220,9 +215,10 @@ anything real:
 - **No CSRF protection, no input validation, no session layer, no output
   escaping in views** — escape with `htmlspecialchars()` yourself.
 - **The project root is the document root.** `index.php`, `config/`, `src/` and
-  `.env` all sit beside the public assets, so the web server must be configured
-  not to serve them. A conventional layout would put a `public/index.php` at the
-  document root instead.
+  `.env` all sit beside the public assets. The bundled `.htaccess` denies access
+  to them on Apache, but on any other server you have to add those rules
+  yourself. A conventional layout would put a `public/index.php` at the document
+  root instead.
 - **No tests ship with the framework.** PHPUnit is wired in as a dev dependency;
   add cases under `tests/` and run `vendor/bin/phpunit tests`.
 

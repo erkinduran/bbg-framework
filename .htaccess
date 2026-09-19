@@ -1,0 +1,14 @@
+# Front controller: send anything that is not a real file or directory to index.php
+RewriteEngine On
+
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.php [L]
+
+# The project root doubles as the document root, so keep the non-public files out
+# of reach. Drop this block if you move index.php into public/ instead.
+<FilesMatch "^(\.env.*|composer\.(json|lock)|server\.php)$">
+    Require all denied
+</FilesMatch>
+
+RedirectMatch 404 ^/(config|helpers|src|views|tests|vendor)/
